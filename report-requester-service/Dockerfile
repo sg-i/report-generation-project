@@ -8,6 +8,8 @@ RUN npm install
 
 COPY . .
 
-RUN npm install -g ts-node nodemon
+RUN npm install dotenv-cli
 
-CMD ["npm", "run", "dev"]
+RUN npm install -g ts-node nodemon 
+
+CMD ["npx", "dotenv", "npm", "run", "dev"]

@@ -4,8 +4,8 @@ services:
       context: ./report-generator-service
     ports:
       - "3001:3000" 
-    environment:
-      - DATABASE_URL=postgres://user:password@report-generator-db:5432/report_generator_db
+    env_file:
+      - ./report-generator-service/.env
     depends_on:
       - report-generator-db
     develop:
@@ -21,8 +21,8 @@ services:
       context: ./report-requester-service
     ports:
       - "3002:3000" 
-    environment:
-      - DATABASE_URL=postgres://user:password@report-requester-db:5432/report_requester_db
+    env_file:
+      - ./report-requester-service/.env
     depends_on:
       - report-requester-db
     develop:

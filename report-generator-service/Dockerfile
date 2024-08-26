@@ -8,6 +8,6 @@ RUN npm install
 
 COPY . .
 
-# RUN npm install -g @nestjs/cli nodemon
- 
-CMD ["npm", "run", "start:dev"]
+RUN npm install dotenv-cli
+
+CMD ["npx", "dotenv", "npm", "run", "start:dev"]
