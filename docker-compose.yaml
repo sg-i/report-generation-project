@@ -1,0 +1,70 @@
+services:
+  report-generator-service:
+    build:
+      context: ./report-generator-service
+    ports:
+      - "3001:3000" 
+    environment:
+      - DATABASE_URL=postgres://user:password@report-generator-db:5432/report_generator_db
+    depends_on:
+      - report-generator-db
+    develop:
+      watch:
+        - path: ./report-generator-service/package.json
+          action: rebuild
+        - path: ./report-generator-service
+          target: /usr/src/app
+          action: sync
+
+  report-requester-service:
+    build:
+      context: ./report-requester-service
+    ports:
+      - "3002:3000" 
+    environment:
+      - DATABASE_URL=postgres://user:password@report-requester-db:5432/report_requester_db
+    depends_on:
+      - report-requester-db
+    develop:
+      watch:
+        - path: ./report-requester-service/package.json
+          action: rebuild
+        - path: ./report-requester-service
+          target: /usr/src/app
+          action: sync
+
+  report-generator-db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: report_generator_db
+    volumes:
+      - report-generator-db-data:/var/lib/postgresql/data
+
+  report-requester-db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: report_requester_db
+    volumes:
+      - report-requester-db-data:/var/lib/postgresql/data
+
+  pgadmin:
+      image: dpage/pgadmin4
+      environment:
+        PGADMIN_DEFAULT_EMAIL: admin@admin.com
+        PGADMIN_DEFAULT_PASSWORD: admin
+      ports:
+        - "5050:80"
+      volumes:
+        - pgadmin-data:/var/lib/pgadmin
+      depends_on:
+        - report-generator-db
+        - report-requester-db
+
+volumes:
+  report-generator-db-data:
+  report-requester-db-data:
+  pgadmin-data:

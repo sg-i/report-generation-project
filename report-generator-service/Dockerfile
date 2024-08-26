@@ -1,6 +1,6 @@
-FROM node:20
+FROM node:20-bookworm
 
-WORKDIR /app
+WORKDIR /usr/src/app
 
 COPY package*.json ./
 
@@ -8,6 +8,6 @@ RUN npm install
 
 COPY . .
 
-RUN npm run build
+# RUN npm install -g @nestjs/cli nodemon
  
 CMD ["npm", "run", "start:dev"]
