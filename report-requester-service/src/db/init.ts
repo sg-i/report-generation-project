@@ -1,6 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 
-
+// Инициализация БД с тестовыми данными
 export async function dbInit(prisma: PrismaClient){
     try {
         await prisma.sales.deleteMany({})
@@ -8,7 +8,6 @@ export async function dbInit(prisma: PrismaClient){
             data: dataForInitialisation,
             skipDuplicates: true 
         });
-
         console.log('Data inserted successfully');
     } catch (error) {
         console.error('Error inserting data:', error);
@@ -16,7 +15,7 @@ export async function dbInit(prisma: PrismaClient){
 }
 
 
-
+// Тестовые данные продаж
 const dataForInitialisation = [
     { productName: 'Laptop', date: new Date('2024-08-01'), quantity: 10, price: 999.99 },
     { productName: 'Smartphone', date: new Date('2024-08-03'), quantity: 25, price: 499.99 },

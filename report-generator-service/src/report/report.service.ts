@@ -1,7 +1,7 @@
 import { HttpException, HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
 import { CreateReportDto } from './dto/create-report.dto';
 import { v4 as uuidv4 } from 'uuid';
-import { PrismaService } from 'src/prisma.service';
+import { PrismaService } from 'src/prisma/prisma.service';
 import axios from 'axios';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -14,8 +14,10 @@ export class ReportService {
     ) {
       
     }
+    // Макс. количество строк в получаемых данных за один запрос
     private chunk_size= 15;
 
+    // Создание отчета. Выдача его id
     async createReport(createReportDto: CreateReportDto) {
         try {
             const reportId = uuidv4();
@@ -29,7 +31,7 @@ export class ReportService {
                 }
             });
 
-            // Запуск обработки отчета
+            // Запуск обработки отчета (создание excel)
             this.processReport(reportId, createReportDto);
 
             return reportId;
@@ -37,19 +39,7 @@ export class ReportService {
             throw new HttpException(`Failed to create report: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
-
-    async getAllReports() {
-        try {
-            const reports = await this.prisma.report.findMany();
-            if (!reports || reports.length === 0) {
-                throw new NotFoundException('Reports not found');
-            }
-            return reports;
-        } catch (error) {
-            throw new HttpException(`Failed to retrieve reports: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
-        }
-    }
-
+    // Получение статуса создание отчета
     async getReportStatus(id: string) {
         try {
             const report = await this.prisma.report.findUnique({
@@ -62,73 +52,80 @@ export class ReportService {
 
             return {
                 status: report.status,
-                url: report.status === 'completed' ? `http://localhost:3000/reports/${id}/download` : null,
+                url: report.status === 'completed' ? `http://localhost:3001/report/${id}/download` : null,
             };
         } catch (error) {
             throw new HttpException(`Failed to get report status: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
+    // Скачивание excel файла по ссылке
+    async downloadReport(id: string) {
+        try {
+            const report = await this.prisma.report.findUnique({
+                where: { id }
+            });
 
-    private async fetchDataFromRequester(endpoint: string, headers: string[], page: number) {
-        
-        let paramHeaderStr = '';
-        if (headers.length) {
-            paramHeaderStr = '&headers=' + headers.join(',');
+            if (!report || !fs.existsSync(report.filePath)) {
+                throw new NotFoundException(`Report with ID ${id} not found`);
+            }
+
+            return report.filePath;
+        } catch (error) {
+            throw new HttpException(`Failed to get report status: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
         }
-        const response = await axios.get(`${endpoint}?page=${page}&size=${this.chunk_size}${paramHeaderStr}`);
+    }
+
+    // Получение данных с сервиса заказчика
+    private async fetchDataFromRequester(endpoint: string, page: number) {
+        const response = await axios.get(endpoint,{
+            params:{
+                page,
+                size: this.chunk_size
+        }});
         return response.data;
     }
 
+    // Обработка отчета
     private async processReport(reportId: string, createReportDto: CreateReportDto) {
         try {
             const { endpoint, headers } = createReportDto;
             let page = 1;
             let hasMoreData = true;
             let filePath = path.join(__dirname, '..', 'reports', `report-${reportId}.xlsx`);
-            let reportData: any[] = [];
 
             if (!fs.existsSync(path.dirname(filePath))) {
                 fs.mkdirSync(path.dirname(filePath), { recursive: true });
             }
 
             while(hasMoreData){
-                const data = await this.fetchDataFromRequester(endpoint, headers, page);
-                console.log(data)
+                const data = await this.fetchDataFromRequester(endpoint, page);
                 if(data.length===0){
                     hasMoreData=false;
                 }
                 else{
-                    // Преобразуем данные в формат, подходящий для Excel
-                    const chunkData = data.map((item: any) => {
-                        const result: any = {};
-                        headers.forEach((header: string) => result[header] = item[header]);
-                        return result;
-                    });
-
-                    reportData = reportData.concat(chunkData);
-
-                    // Обновляем или создаем Excel-файл с новыми данными
-                    const ws = XLSX.utils.json_to_sheet(reportData);
-                    const wb = XLSX.utils.book_new();
-                    XLSX.utils.book_append_sheet(wb, ws, 'Report');
-                    XLSX.writeFile(wb, filePath);
-                    
+                    if (!fs.existsSync(filePath)) {
+                        // Создание новой книги и добавление заголовков
+                        const workbook = XLSX.utils.book_new();
+                        const worksheet = XLSX.utils.aoa_to_sheet([headers]);
+        
+                        // Добавление данных
+                        XLSX.utils.sheet_add_json(worksheet, data, { skipHeader: true, origin: -1 });
+                        
+                        XLSX.utils.book_append_sheet(workbook, worksheet, 'Report');
+                        XLSX.writeFile(workbook, filePath);
+                    } else {
+                        // Загрузка существующего файла и добавление данных
+                        const workbook = XLSX.readFile(filePath);
+                        const worksheet = workbook.Sheets['Report'];
+        
+                        // Добавление данных
+                        XLSX.utils.sheet_add_json(worksheet, data, { skipHeader: true, origin: -1 });
+        
+                        XLSX.writeFile(workbook, filePath);
+                    }
                     page++;
                 }
             }
-            // while (hasMoreData) {
-            //     const data = await this.fetchDataFromRequester(endpoint, headers, page);
-
-            //     if (data.length < 5) { // предположим, что размер страницы = 5
-            //         hasMoreData = false;
-            //     }
-
-            //     reportData = reportData.concat(data);
-            //     page++;
-            // }
-
-          
-
 
             await this.prisma.report.update({
                 where: { id: reportId },
@@ -140,7 +137,6 @@ export class ReportService {
                 where: { id: reportId },
                 data: { status: 'failed' }
             });
-            // throw new HttpException(`Failed to process report: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 }
