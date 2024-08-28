@@ -10,4 +10,5 @@ COPY . .
 
 RUN npm install dotenv-cli
 
-CMD ["npx", "dotenv", "npm", "run", "start:dev"]
+CMD npx prisma migrate reset --force && npx prisma migrate dev --name init && npx prisma generate && npx dotenv npm run start:dev  
+# CMD ["npx", "dotenv", "npm", "run", "start:dev"]

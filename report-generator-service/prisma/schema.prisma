@@ -1,0 +1,19 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Report{
+  id                      String @id @default(uuid())
+  requesterServiceName    String
+  endpoint                String
+  headers                 String[]
+  filePath                String @default("")
+  status                  String @default("pending")
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+}

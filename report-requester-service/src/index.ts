@@ -1,14 +1,12 @@
 import express, { Request, Response } from 'express';
-
+import salesRouter from './routes/salesRoutes';
 const app = express();
-const port = 3000;
 
 app.use(express.json());
 
-app.get('/', (req: Request, res: Response) => {
-  res.send(JSON.stringify(process.env));
-});
+app.use('/api', salesRouter);
 
-app.listen(port, () => {
-  console.log(`Server is running at http://localhost:${port}`);
+
+app.listen(process.env.PORT, () => {
+  console.log(`Server is running at http://localhost:${process.env.PORT}`);
 });

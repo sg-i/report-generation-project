@@ -41,6 +41,9 @@ services:
       POSTGRES_DB: report_generator_db
     volumes:
       - report-generator-db-data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    restart: unless-stopped
 
   report-requester-db:
     image: postgres:16
@@ -50,6 +53,9 @@ services:
       POSTGRES_DB: report_requester_db
     volumes:
       - report-requester-db-data:/var/lib/postgresql/data
+    ports:
+      - "5434:5432"
+    restart: always
 
   pgadmin:
       image: dpage/pgadmin4
